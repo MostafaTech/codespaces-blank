@@ -26,7 +26,7 @@ std::vector<std::string> split(const std::string& line) {
     return result;
 }
 
-std::string handleCommand(const std::string& input) {
+std::string handleCommand(const std::string& input, bool& should_end) {
     auto tokens = split(input);
     if (tokens.empty()) return "ERR empty command\n";
 
@@ -40,28 +40,32 @@ std::string handleCommand(const std::string& input) {
         }
         return result + "\n";
     }
-    else if (cmd == "SET") {
+    else if (cmd == "SET" || cmd == "SETE") {
         if (tokens.size() < 3) return "ERR usage: SET key value\n";
         std::lock_guard<std::mutex> lock(db_mutex);
         db[tokens[1]] = tokens[2];
+        if (cmd == "SETE") should_end = true;
         return "OK\n";
     }
-    else if (cmd == "GET") {
+    else if (cmd == "GET" || cmd == "GETE") {
         if (tokens.size() != 2) return "ERR usage: GET key\n";
         std::lock_guard<std::mutex> lock(db_mutex);
         auto it = db.find(tokens[1]);
         if (it == db.end()) return "ERR key not found\n";
+        if (cmd == "GETE") should_end = true;
         return it->second + "\n";
     }
-    else if (cmd == "DEL") {
+    else if (cmd == "DEL" || cmd == "DELE") {
         if (tokens.size() != 2) return "ERR usage: DEL key\n";
         std::lock_guard<std::mutex> lock(db_mutex);
         if (db.erase(tokens[1]) == 0)
             return "ERR key not found\n";
+        if (cmd == "DELE") should_end = true;
         return "OK\n";
     }
     else if (cmd == "END") {
-        return "END\n";
+        should_end = true;
+        return "BYE\n";
     }
     else {
         return "ERR unknown command\n";
@@ -76,13 +80,14 @@ void handleClient(int client_socket) {
         if (valread <= 0) break;
 
         buffer[valread] = '\0';
+        bool should_end = false;
         std::string input(buffer);
-        std::string response = handleCommand(input);
+        std::string response = handleCommand(input, should_end);
 
         send(client_socket, response.c_str(), response.size(), 0);
         memset(buffer, 0, BUFFER_SIZE);
         
-        if (response == "END\n") break;
+        if (should_end) break;
     }
 
     log("Client " + std::to_string(client_socket) + " disconnected");

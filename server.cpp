@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
+#include "logger.hpp"
 #include "ThreadPool.hpp"
 
 #define PORT 4000
@@ -79,7 +80,7 @@ void handleClient(int client_socket) {
         memset(buffer, 0, BUFFER_SIZE);
     }
 
-    std::cout << "Client disconnected.\n";
+    log("Client " + std::to_string(client_socket) + " disconnected");
     close(client_socket);
 }
 
@@ -108,12 +109,13 @@ int main() {
         return 1;
     }
 
-    std::cout << "Server listening on port " << PORT << "...\n";
+    log("Server listening on port " + std::to_string(PORT) + "...\n");
 
     while (true) {
         int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
         if (client_socket < 0) continue;
 
+        log("New client connected: socket=" + std::to_string(client_socket));
         pool.enqueue([client_socket]() {
             handleClient(client_socket);
         });

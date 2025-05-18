@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
+#include "ThreadPool.hpp"
 
 #define PORT 4000
 #define BUFFER_SIZE 1024
@@ -30,7 +31,15 @@ std::string handleCommand(const std::string& input) {
 
     std::string cmd = tokens[0];
 
-    if (cmd == "SET") {
+    if (cmd == "ALL") {
+        std::lock_guard<std::mutex> lock(db_mutex);
+        std::string result = "";
+        for (auto i : db) {
+            result += i.first + " ";
+        }
+        return result + "\n";
+    }
+    else if (cmd == "SET") {
         if (tokens.size() < 3) return "ERR usage: SET key value\n";
         std::lock_guard<std::mutex> lock(db_mutex);
         db[tokens[1]] = tokens[2];
@@ -75,6 +84,8 @@ void handleClient(int client_socket) {
 }
 
 int main() {
+    ThreadPool pool(4);
+
     int server_fd;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
@@ -101,15 +112,11 @@ int main() {
 
     while (true) {
         int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-        if (client_socket < 0) {
-            perror("accept");
-            continue;
-        }
+        if (client_socket < 0) continue;
 
-        std::cout << "New client connected.\n";
-
-        std::thread clientThread(handleClient, client_socket);
-        clientThread.detach();
+        pool.enqueue([client_socket]() {
+            handleClient(client_socket);
+        });
     }
 
     return 0;

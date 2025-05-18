@@ -17,6 +17,6 @@ jobs:
     - name: Build the Docker image
       run: docker build -f Dockerfile -t ${{secrets.AZURE_CONTAINERREG_URL}}/my-keyvalue-db:latest .
     - name: Push the Docker image
-      run: 
+      run: |
         docker login -u ${{secrets.AZURE_CONTAINERREG_USER}} -p ${{secrets.AZURE_CONTAINERREG_PASS}} ${{secrets.AZURE_CONTAINERREG_URL}}
         docker push ${{secrets.AZURE_CONTAINERREG_URL}}/my-keyvalue-db:latest

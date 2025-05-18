@@ -60,6 +60,9 @@ std::string handleCommand(const std::string& input) {
             return "ERR key not found\n";
         return "OK\n";
     }
+    else if (cmd == "END") {
+        return "END\n";
+    }
     else {
         return "ERR unknown command\n";
     }
@@ -78,6 +81,8 @@ void handleClient(int client_socket) {
 
         send(client_socket, response.c_str(), response.size(), 0);
         memset(buffer, 0, BUFFER_SIZE);
+        
+        if (response == "END\n") break;
     }
 
     log("Client " + std::to_string(client_socket) + " disconnected");
